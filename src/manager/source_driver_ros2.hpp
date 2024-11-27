@@ -120,7 +120,7 @@ inline void SourceDriver::Init(const YAML::Node& config)
 
   node_ptr_.reset(new rclcpp::Node("hesai_ros_driver_node"));
   if (driver_param.input_param.send_point_cloud_ros) {
-    pub_ = node_ptr_->create_publisher<sensor_msgs::msg::PointCloud2>(driver_param.input_param.ros_send_point_topic, 100);
+    pub_ = node_ptr_->create_publisher<sensor_msgs::msg::PointCloud2>(driver_param.input_param.ros_send_point_topic, 10);
   }
 
 
@@ -150,10 +150,10 @@ inline void SourceDriver::Init(const YAML::Node& config)
   if (driver_param.input_param.source_type == DATA_FROM_ROS_PACKET) {
     pkt_sub_ = node_ptr_->create_subscription<hesai_ros_driver::msg::UdpFrame>(driver_param.input_param.ros_recv_packet_topic, 10, 
     std::bind(&SourceDriver::RecievePacket, this, std::placeholders::_1));
-  if (driver_param.input_param.ros_recv_correction_topic != NULL_TOPIC) {    
-    crt_sub_ = node_ptr_->create_subscription<std_msgs::msg::UInt8MultiArray>(driver_param.input_param.ros_recv_correction_topic, 10, 
-    std::bind(&SourceDriver::RecieveCorrection, this, std::placeholders::_1));
-  }
+    if (driver_param.input_param.ros_recv_correction_topic != NULL_TOPIC) {    
+      crt_sub_ = node_ptr_->create_subscription<std_msgs::msg::UInt8MultiArray>(driver_param.input_param.ros_recv_correction_topic, 10, 
+      std::bind(&SourceDriver::RecieveCorrection, this, std::placeholders::_1));
+    }
     driver_param.decoder_param.enable_udp_thread = false;
     subscription_spin_thread_ = new boost::thread(boost::bind(&SourceDriver::SpinRos2,this));
   }
@@ -165,12 +165,12 @@ inline void SourceDriver::Init(const YAML::Node& config)
     driver_param.decoder_param.enable_parser_thread = true;
   #endif
   driver_ptr_->RegRecvCallback(std::bind(&SourceDriver::SendPointCloud, this, std::placeholders::_1));
-  if(driver_param.input_param.send_packet_ros && driver_param.input_param.source_type != DATA_FROM_ROS_PACKET){
-    driver_ptr_->RegRecvCallback(std::bind(&SourceDriver::SendPacket, this, std::placeholders::_1, std::placeholders::_2)) ;
-  }
-  if (driver_param.input_param.ros_send_packet_loss_topic != NULL_TOPIC) {
-  driver_ptr_->RegRecvCallback(std::bind(&SourceDriver::SendPacketLoss, this, std::placeholders::_1, std::placeholders::_2));
-}
+  // if(driver_param.input_param.send_packet_ros && driver_param.input_param.source_type != DATA_FROM_ROS_PACKET){
+  //   driver_ptr_->RegRecvCallback(std::bind(&SourceDriver::SendPacket, this, std::placeholders::_1, std::placeholders::_2)) ;
+  // }
+  // if (driver_param.input_param.ros_send_packet_loss_topic != NULL_TOPIC) {
+  // driver_ptr_->RegRecvCallback(std::bind(&SourceDriver::SendPacketLoss, this, std::placeholders::_1, std::placeholders::_2));
+  // }
   if (driver_param.input_param.source_type == DATA_FROM_LIDAR) {
 if (driver_param.input_param.ros_send_correction_topic != NULL_TOPIC) {
     driver_ptr_->RegRecvCallback(std::bind(&SourceDriver::SendCorrection, this, std::placeholders::_1));
@@ -263,8 +263,9 @@ inline sensor_msgs::msg::PointCloud2 SourceDriver::ToRosMsg(const LidarDecodedFr
   for (size_t i = 0; i < frame.points_num; i++)
   {
     LidarPointXYZIRT point = frame.points[i];
-    *iter_x_ = point.x;
-    *iter_y_ = point.y;
+    // TODO: Convert the point cloud to velodyne coordinate system
+    *iter_x_ = -point.y;
+    *iter_y_ = point.x;
     *iter_z_ = point.z;
     *iter_intensity_ = point.intensity;
     *iter_ring_ = point.ring;
